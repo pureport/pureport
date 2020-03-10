@@ -57,6 +57,34 @@ options:
             - The secondary port's VLAN (required if high_availability is True).
         required: false
         type: int
+    routing_type:
+        description:
+            - The routing type to use for this connection.
+        default: 'BGP'
+        choices: [BGP, STATIC]
+    gateway_ip:
+        description:
+            - The GatewayIP when this connection uses routing_type: STATIC
+        required: false
+        type: str
+    static_routes:
+        description:
+            - A list of static routes to be used with the STATIC routing type (e.g dict(network=str, next_hop=str)).
+        required: false
+        type: list
+        default: []
+        suboptions:
+            network:
+                description:
+                    - A CIDR (a.b.c.d/n) address representing a subnet behind this connection.
+                required: true
+                type: str
+            next_hop:
+                description:
+                    - A CIDR (a.b.c.d/n) address representing the next hop this network must take.
+                required: true
+                type: str
+        
 extends_documentation_fragment:
     - pureport.fabric.client
     - pureport.fabric.network
@@ -115,7 +143,10 @@ def construct_connection(module):
         'customer_asn',
         'customer_networks',
         'primary_customer_vlan',
-        'secondary_customer_vlan'
+        'secondary_customer_vlan',
+        'routing_type',
+        'gateway_ip',
+        'static_routes'
     ))
     connection.update(dict(
         type='PORT',
@@ -136,7 +167,8 @@ def construct_connection(module):
     # Correct naming
     connection.update(dict(
         customerASN=connection.pop('customerAsn'),
-        tags=module.params.get('tags')
+        tags=module.params.get('tags'),
+        gatewayIP=connection.pop('gatewayIp')
     ))
     return connection
 
@@ -157,7 +189,10 @@ def main():
             secondary_port_id=dict(type='str'),
             secondary_port_href=dict(type='str'),
             primary_customer_vlan=dict(type='int', required=True),
-            secondary_customer_vlan=dict(type='int')
+            secondary_customer_vlan=dict(type='int'),
+            routing_type=dict(type='str', choices=['BGP', 'STATIC'], default='BGP'),
+            gateway_ip=dict(type='str'),
+            static_routes=dict(type='list', default=[])
         )
     )
     mutually_exclusive = []
